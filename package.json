@@ -1,0 +1,21 @@
+{
+  "name": "rag-pdf",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "convex": "^1.25.4",
+    "hono": "^4.8.9",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.54"
+  }
+}
