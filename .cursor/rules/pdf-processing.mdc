@@ -1,0 +1,12 @@
+---
+description: PDF processing and chunking strategy used in this repo
+---
+
+# PDF Processing & Chunking Rules
+
+- Use `ingestPdf` (pdfjs-dist) to extract text; normalize whitespace.
+- Detect chapters and titles during parse for metadata enrichment.
+- Chunking: paragraph-level chunks plus a page-title chunk.
+- Keep chunk sizes roughly 300–800 tokens where possible; later add sub-splitting if paragraphs are too long.
+- Prefer deriving data (titles/chapters) over adding reactive state; keep business logic outside UI.
+- For file outputs, use `saveExtractedPdf` for ranges and `splitPdfToPages` for per-page PDFs.

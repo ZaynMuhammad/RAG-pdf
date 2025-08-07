@@ -1,6 +1,7 @@
 import { PDFDocument } from "pdf-lib";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
-import { mkdir, readFileSync, writeFileSync, statSync } from "fs";
+import { mkdir, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 
 export interface PageJson {
   page: number;
@@ -19,38 +20,6 @@ export interface ProcessedPDF {
     fileSizeMB: string;
   };
   pages: PageJson[];
-}
-
-/**
- * Main function to process a PDF file and extract structured content
- */
-export async function processPDF(pdfUri: string): Promise<ProcessedPDF> {
-  try {
-    // Read the PDF file
-    const pdfBytes = readFileSync(pdfUri);
-
-    const result = await ingestPdf(pdfBytes.buffer as ArrayBuffer);
-
-    // Extract metadata using pdf-lib
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const metadata = {
-      title: pdfDoc.getTitle() || "Untitled",
-      author: pdfDoc.getAuthor() || "Unknown",
-      totalPages: pdfDoc.getPageCount(),
-      createdAt: new Date().toISOString(),
-      fileSizeMB: (pdfBytes.length / (1024 * 1024)).toFixed(2),
-    };
-
-    return {
-      metadata,
-      pages: result,
-    };
-  } catch (error) {
-    console.error("Error processing PDF:", error);
-    throw new Error(
-      `Failed to process PDF: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-  }
 }
 
 /**
@@ -102,55 +71,6 @@ export async function ingestPdf(bytes: ArrayBuffer): Promise<PageJson[]> {
     });
   }
   return result;
-}
-
-/**
- * Split PDF into individual page files
- */
-export async function splitPDFIntoPages(
-  pdfUri: string,
-  outputDir: string
-): Promise<string[]> {
-  try {
-    const pdfBytes = readFileSync(pdfUri);
-
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pageCount = pdfDoc.getPageCount();
-    const pageFiles: string[] = [];
-
-    // Ensure output directory exists
-    mkdir(outputDir, { recursive: true }, (err) => {
-      if (err) {
-        console.error("Error creating output directory:", err);
-        throw new Error(`Failed to create output directory: ${err.message}`);
-      }
-    });
-
-    for (let i = 0; i < pageCount; i++) {
-      // Create a new PDF document with just this page
-      const newPdf = await PDFDocument.create();
-      const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
-      newPdf.addPage(copiedPage);
-
-      // Save the single page PDF
-      const pdfBytesArray = await newPdf.save();
-      const base64String = Buffer.from(pdfBytesArray).toString("base64");
-
-      const pageFileName = `page_${i + 1}.pdf`;
-      const pageFilePath = `${outputDir}/${pageFileName}`;
-
-      writeFileSync(pageFilePath, base64String);
-
-      pageFiles.push(pageFilePath);
-    }
-
-    return pageFiles;
-  } catch (error) {
-    console.error("Error splitting PDF:", error);
-    throw new Error(
-      `Failed to split PDF: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-  }
 }
 
 /**
@@ -358,4 +278,49 @@ export async function extractPageRange(
     console.error("Error extracting page range:", error);
     throw error;
   }
+}
+
+/**
+ * Save an extracted page range as a new PDF file
+ */
+export async function saveExtractedPdf(
+  pdfUri: string,
+  startPage: number,
+  endPage: number,
+  outPath: string
+) {
+  const pdfBytes = readFileSync(pdfUri);
+  const src = await PDFDocument.load(pdfBytes);
+  const dst = await PDFDocument.create();
+  const indices = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage - 1 + i
+  );
+  const pages = await dst.copyPages(src, indices);
+  pages.forEach((p) => dst.addPage(p));
+  const extractedBytes = await dst.save();
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, extractedBytes);
+  return outPath;
+}
+
+/**
+ * Split a PDF into single-page PDFs and save them into a directory
+ */
+export async function splitPdfToPages(pdfUri: string, outDir: string) {
+  const pdfBytes = readFileSync(pdfUri);
+  const src = await PDFDocument.load(pdfBytes);
+  const total = src.getPageCount();
+  mkdirSync(outDir, { recursive: true });
+  const outputs: string[] = [];
+  for (let i = 0; i < total; i++) {
+    const dst = await PDFDocument.create();
+    const [page] = await dst.copyPages(src, [i]);
+    dst.addPage(page);
+    const data = await dst.save();
+    const outPath = join(outDir, `page_${i + 1}.pdf`);
+    writeFileSync(outPath, data);
+    outputs.push(outPath);
+  }
+  return { total, outputs };
 }

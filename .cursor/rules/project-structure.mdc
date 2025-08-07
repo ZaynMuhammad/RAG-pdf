@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+# Project Structure and Key Flows
+
+- App server: [index.ts](mdc:index.ts) uses Hono to expose simple endpoints; it is not coupled to Convex.
+- Convex backend:
+  - Schema: [convex/schema.ts](mdc:convex/schema.ts)
+  - Functions: [convex/documents.ts](mdc:convex/documents.ts)
+  - Tables: `documents`, `chunks` (with vector index `by_embedding` on `embedding` field, dims 1536)
+- PDF processing utilities: [pdf/pdf-processor.ts](mdc:pdf/pdf-processor.ts)
+  - `extractPageRange`, `ingestPdf`, `createVectorChunks`, `saveExtractedPdf`, `splitPdfToPages`
+- Example script: [run-pdf.ts](mdc:run-pdf.ts)
+
+High-level flow
+
+- Extract subset or split pages: `extractPageRange` or `splitPdfToPages`
+- Parse text per page: `ingestPdf` (pdfjs-dist)
+- Chunk into RAG-ready units: `createVectorChunks`
+- Embed and upload to Convex: mutations in [convex/documents.ts](mdc:convex/documents.ts)
+- Query via semantic search action: `semanticSearch` in [convex/documents.ts](mdc:convex/documents.ts)

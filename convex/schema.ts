@@ -19,12 +19,13 @@ export default defineSchema({
     title: v.optional(v.string()),
     chapter: v.optional(v.string()),
     paragraphIndex: v.optional(v.number()),
-    embedding: v.optional(v.array(v.number())), // For vector embeddings
+    embedding: v.optional(v.array(v.float64())),
   })
     .index("by_document", ["documentId"])
     .index("by_chunk_id", ["chunkId"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
       dimensions: 1536, // OpenAI embedding size
+      filterFields: ["documentId", "pageNumber", "chapter"],
     }),
 });

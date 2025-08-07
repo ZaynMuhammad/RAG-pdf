@@ -1,10 +1,4 @@
 import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import { convexMiddleware } from "convex/server";
-import { ConvexHttpClient } from "convex/browser";
-import { schema } from "./convex/schema";
-
-const convex = new ConvexHttpClient(process.env.CONVEX_URL!);
 
 const app = new Hono();
 
